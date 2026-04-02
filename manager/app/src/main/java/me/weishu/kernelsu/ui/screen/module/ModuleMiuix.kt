@@ -13,11 +13,9 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -117,6 +115,7 @@ import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.PopupPositionProvider
@@ -425,7 +424,6 @@ fun ModulePagerMiuix(
                         end = 0.dp,
                         bottom = maxOf(bottomInnerPadding, imeBottomPadding),
                     ),
-                    animateItems = true,
                 )
             }
         },
@@ -464,7 +462,13 @@ fun ModulePagerMiuix(
             hazeState = hazeState,
             hazeStyle = hazeStyle
         ) { boxHeight ->
-            if (modules.isEmpty()) {
+            val contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding() + boxHeight.value + 6.dp,
+                start = innerPadding.calculateStartPadding(layoutDirection),
+                end = innerPadding.calculateEndPadding(layoutDirection),
+                bottom = bottomInnerPadding,
+            )
+            if (modules.isEmpty() && !uiState.hasLoaded) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -476,19 +480,9 @@ fun ModulePagerMiuix(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        stringResource(R.string.module_empty),
-                        textAlign = TextAlign.Center,
-                        color = Color.Gray,
-                    )
+                    InfiniteProgressIndicator()
                 }
             } else {
-                val contentPadding = PaddingValues(
-                    top = innerPadding.calculateTopPadding() + boxHeight.value + 6.dp,
-                    start = innerPadding.calculateStartPadding(layoutDirection),
-                    end = innerPadding.calculateEndPadding(layoutDirection),
-                    bottom = bottomInnerPadding,
-                )
                 PullToRefresh(
                     isRefreshing = uiState.isRefreshing,
                     pullToRefreshState = pullToRefreshState,
@@ -496,22 +490,42 @@ fun ModulePagerMiuix(
                     refreshTexts = refreshTexts,
                     contentPadding = contentPadding,
                 ) {
-                    ModuleList(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .scrollEndHaptic()
-                            .overScrollVertical()
-                            .nestedScroll(scrollBehavior.nestedScrollConnection)
-                            .nestedScroll(nestedScrollConnection)
-                            .let { if (enableBlur) it.hazeSource(state = hazeState) else it },
-                        modules = modules,
-                        updateInfoMap = uiState.updateInfo,
-                        actions = actions,
-                        onModuleAddShortcut = { module, type ->
-                            onModuleAddShortcut(module, type)
-                        },
-                        contentPadding = contentPadding,
-                    )
+                    if (modules.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    top = innerPadding.calculateTopPadding(),
+                                    start = innerPadding.calculateStartPadding(layoutDirection),
+                                    end = innerPadding.calculateEndPadding(layoutDirection),
+                                    bottom = bottomInnerPadding
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                stringResource(R.string.module_empty),
+                                textAlign = TextAlign.Center,
+                                color = Color.Gray,
+                            )
+                        }
+                    } else {
+                        ModuleList(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .scrollEndHaptic()
+                                .overScrollVertical()
+                                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                                .nestedScroll(nestedScrollConnection)
+                                .let { if (enableBlur) it.hazeSource(state = hazeState) else it },
+                            modules = modules,
+                            updateInfoMap = uiState.updateInfo,
+                            actions = actions,
+                            onModuleAddShortcut = { module, type ->
+                                onModuleAddShortcut(module, type)
+                            },
+                            contentPadding = contentPadding,
+                        )
+                    }
                 }
             }
         }
@@ -646,7 +660,6 @@ private fun ModuleList(
     actions: ModuleActions,
     onModuleAddShortcut: (Module, ShortcutType) -> Unit,
     contentPadding: PaddingValues,
-    animateItems: Boolean = false,
 ) {
     val loadingDialog = rememberLoadingDialog()
     val scope = rememberCoroutineScope()
@@ -702,17 +715,7 @@ private fun ModuleList(
                 )
             }
 
-            if (animateItems) {
-                AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    content()
-                }
-            } else {
-                content()
-            }
+            content()
         }
     }
 }
@@ -734,13 +737,9 @@ fun ModuleItem(
     val actionIconTint = colorScheme.onSurface.copy(alpha = if (isInDarkTheme()) 0.7f else 0.9f)
     val updateBg = colorScheme.tertiaryContainer.copy(alpha = 0.6f)
     val updateTint = colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
-    val hasUpdate by remember(updateUrl) { derivedStateOf { updateUrl.isNotEmpty() } }
-    val textDecoration by remember(module.remove) {
-        mutableStateOf(if (module.remove) TextDecoration.LineThrough else null)
-    }
-    val hasDescription by remember(module.description) {
-        derivedStateOf { module.description.isNotBlank() }
-    }
+    val hasUpdate = updateUrl.isNotEmpty()
+    val textDecoration = if (module.remove) TextDecoration.LineThrough else null
+    val hasDescription = module.description.isNotBlank()
     var expanded by rememberSaveable(module.id) { mutableStateOf(false) }
 
     Card(

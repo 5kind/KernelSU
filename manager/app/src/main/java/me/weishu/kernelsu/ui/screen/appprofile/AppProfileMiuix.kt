@@ -51,7 +51,6 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeSource
 import me.weishu.kernelsu.Natives
-import me.weishu.kernelsu.ui.util.defaultHazeEffect
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.AppIconImage
 import me.weishu.kernelsu.ui.component.miuix.DropdownItem
@@ -60,6 +59,7 @@ import me.weishu.kernelsu.ui.component.profile.RootProfileConfig
 import me.weishu.kernelsu.ui.component.profile.TemplateConfig
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.theme.LocalEnableBlur
+import me.weishu.kernelsu.ui.util.defaultHazeEffect
 import me.weishu.kernelsu.ui.util.listAppProfileTemplates
 import me.weishu.kernelsu.ui.util.ownerNameForUid
 import me.weishu.kernelsu.ui.util.setSepolicy
@@ -145,7 +145,7 @@ fun AppProfileScreenMiuix(
                         AppIconImage(
                             packageInfo = state.appGroup.primary.packageInfo,
                             label = state.appGroup.primary.label,
-                            modifier = Modifier.size(54.dp)
+                            modifier = Modifier.size(64.dp)
                         )
                     },
                     appUid = state.uid,
@@ -200,7 +200,7 @@ private fun AppProfileInner(
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp)
                 .padding(bottom = 12.dp),
-            insideMargin = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
+            insideMargin = PaddingValues(start = 12.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -208,7 +208,7 @@ private fun AppProfileInner(
                 appIcon()
                 Column(
                     modifier = Modifier
-                        .padding(start = 16.dp, end = 8.dp)
+                        .padding(start = 12.dp, end = 8.dp)
                         .weight(1f),
                 ) {
                     Text(
@@ -304,7 +304,7 @@ private fun AppProfileInner(
                     Icon(
                         imageVector = Icons.Rounded.Security,
                         contentDescription = null,
-                        modifier = Modifier.padding(end = 16.dp),
+                        modifier = Modifier.padding(end = 6.dp),
                         tint = colorScheme.onBackground
                     )
                 },
@@ -456,13 +456,13 @@ private fun AppProfileInner(
                                 packageInfo = app.packageInfo,
                                 label = app.label,
                                 modifier = Modifier
-                                    .padding(end = 12.dp)
-                                    .size(40.dp)
+                                    .padding(end = 1.dp)
+                                    .size(48.dp)
                             )
                         },
                         title = app.label,
                         summary = app.packageName,
-                        insideMargin = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
+                        insideMargin = PaddingValues(start = 11.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
                     )
                 }
                 Spacer(Modifier.height(3.dp))
@@ -601,7 +601,7 @@ private fun ProfileBox(
             startAction = {
                 Icon(
                     Icons.Rounded.AccountCircle,
-                    modifier = Modifier.padding(end = 16.dp),
+                    modifier = Modifier.padding(end = 6.dp),
                     contentDescription = null,
                     tint = colorScheme.onBackground
                 )

@@ -2,9 +2,12 @@ package me.weishu.kernelsu.ui.screen.superuser
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.Dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.weishu.kernelsu.ui.LocalUiMode
 import me.weishu.kernelsu.ui.UiMode
@@ -15,17 +18,23 @@ import me.weishu.kernelsu.ui.viewmodel.SuperUserViewModel
 @Composable
 fun SuperUserPager(
     navigator: Navigator,
-    bottomInnerPadding: Dp
+    bottomInnerPadding: Dp,
+    isCurrentPage: Boolean = true
 ) {
     val viewModel = viewModel<SuperUserViewModel>()
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        if (uiState.groupedApps.isEmpty()) {
-            viewModel.initializePreferences()
-            viewModel.loadAppList().join()
-        } else if (viewModel.isNeedRefresh) {
-            viewModel.loadAppList(resort = false).join()
+    var hasActivated by remember { mutableStateOf(false) }
+    if (isCurrentPage) hasActivated = true
+
+    if (hasActivated) {
+        LaunchedEffect(Unit) {
+            if (uiState.groupedApps.isEmpty()) {
+                viewModel.initializePreferences()
+                viewModel.loadAppList().join()
+            } else if (viewModel.isNeedRefresh) {
+                viewModel.loadAppList(resort = false).join()
+            }
         }
     }
 
@@ -42,6 +51,7 @@ fun SuperUserPager(
     }
     val actions = SuperUserActions(
         onRefresh = { viewModel.loadAppList(force = true) },
+        onOpenSulog = { navigator.push(Route.Sulog) },
         onSearchTextChange = onSearchTextChange,
         onSearchStatusChange = viewModel::updateSearchStatus,
         onClearSearch = { onSearchTextChange("") },

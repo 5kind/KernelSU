@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ContactPage
@@ -72,7 +73,7 @@ fun SettingPagerMaterial(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
     val showUninstallDialog = rememberSaveable { mutableStateOf(false) }
-    var showBottomsheet by remember { mutableStateOf(false) }
+    var showBottomSheet by remember { mutableStateOf(false) }
 
     UninstallDialog(
         show = showUninstallDialog.value,
@@ -81,9 +82,7 @@ fun SettingPagerMaterial(
 
     Scaffold(
         topBar = {
-            TopBar(
-                scrollBehavior = scrollBehavior
-            )
+            TopBar(scrollBehavior = scrollBehavior)
         },
         snackbarHost = { SnackbarHost(snackBarHost) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
@@ -214,12 +213,36 @@ fun SettingPagerMaterial(
                             )
                         },
                         {
+                            val sulogSummary = when (uiState.sulogStatus) {
+                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                else -> stringResource(id = R.string.settings_sulog_summary)
+                            }
+                            SegmentedSwitchItem(
+                                icon = Icons.AutoMirrored.Filled.Article,
+                                title = stringResource(id = R.string.settings_sulog),
+                                summary = sulogSummary,
+                                enabled = uiState.sulogStatus == "supported",
+                                checked = uiState.isSulogEnabled,
+                                onCheckedChange = actions.onSetSulogEnabled
+                            )
+                        },
+                        {
                             SegmentedSwitchItem(
                                 icon = Icons.Filled.FolderDelete,
                                 title = stringResource(id = R.string.settings_umount_modules_default),
                                 summary = stringResource(id = R.string.settings_umount_modules_default_summary),
                                 checked = uiState.isDefaultUmountModules,
                                 onCheckedChange = actions.onSetDefaultUmountModules
+                            )
+                        },
+                        {
+                            SegmentedSwitchItem(
+                                icon = Icons.Filled.DeveloperMode,
+                                title = stringResource(id = R.string.settings_adb_root),
+                                summary = stringResource(id = R.string.settings_adb_root_summary),
+                                checked = uiState.isAdbRootEnabled,
+                                onCheckedChange = actions.onSetAdbRootEnabled
                             )
                         },
                         {
@@ -236,6 +259,7 @@ fun SettingPagerMaterial(
                                 icon = Icons.Filled.ElectricalServices,
                                 title = stringResource(id = R.string.settings_auto_jailbreak),
                                 summary = stringResource(id = R.string.settings_auto_jailbreak_summary),
+                                enabled = uiState.isLateLoadMode,
                                 checked = uiState.autoJailbreak,
                                 onCheckedChange = actions.onSetAutoJailbreak
                             )
@@ -252,6 +276,7 @@ fun SettingPagerMaterial(
                             val uninstall = stringResource(id = R.string.settings_uninstall)
                             SegmentedListItem(
                                 onClick = { showUninstallDialog.value = true },
+                                enabled = !uiState.isLateLoadMode,
                                 headlineContent = { Text(uninstall) },
                                 leadingContent = { Icon(Icons.Filled.Delete, uninstall) }
                             )
@@ -265,7 +290,7 @@ fun SettingPagerMaterial(
                 content = listOf(
                     {
                         SegmentedListItem(
-                            onClick = { showBottomsheet = true },
+                            onClick = { showBottomSheet = true },
                             headlineContent = { Text(stringResource(id = R.string.send_log)) },
                             leadingContent = {
                                 Icon(
@@ -291,8 +316,8 @@ fun SettingPagerMaterial(
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (showBottomsheet) {
-                SendLogBottomSheet { showBottomsheet = false }
+            if (showBottomSheet) {
+                SendLogBottomSheet { showBottomSheet = false }
             }
             Spacer(modifier = Modifier.height(bottomInnerPadding))
         }

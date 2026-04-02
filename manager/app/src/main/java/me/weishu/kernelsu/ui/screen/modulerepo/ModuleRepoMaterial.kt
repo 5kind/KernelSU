@@ -8,7 +8,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +42,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ChromeReaderMode
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.InstallMobile
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
@@ -77,8 +77,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.UriHandler
@@ -98,9 +100,10 @@ import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
 import me.weishu.kernelsu.ui.component.material.SearchAppBar
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedListItem
+import me.weishu.kernelsu.ui.component.material.TonalCard
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
-import me.weishu.kernelsu.ui.screen.home.TonalCard
 import me.weishu.kernelsu.ui.util.download
+import me.weishu.kernelsu.ui.util.rememberContentReady
 import java.text.Collator
 
 @SuppressLint("LocalContextGetResourceValueCall")
@@ -110,6 +113,7 @@ fun ModuleRepoScreenMaterial(
     state: ModuleRepoUiState,
     actions: ModuleRepoActions,
 ) {
+    val haptic = LocalHapticFeedback.current
     val listState = rememberLazyListState()
     val searchListState = rememberLazyListState()
 
@@ -147,6 +151,7 @@ fun ModuleRepoScreenMaterial(
                                 text = { Text(stringResource(R.string.module_repos_sort_name)) },
                                 trailingIcon = { Checkbox(state.sortByName, null) },
                                 onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
                                     actions.onToggleSortByName()
                                 }
                             )
@@ -179,8 +184,10 @@ fun ModuleRepoScreenMaterial(
         contentWindowInsets = WindowInsets.systemBars.add(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal)
     ) { innerPadding ->
         val isLoading = state.modules.isEmpty()
+        val hadDataOnEntry = remember { state.modules.isNotEmpty() }
+        val contentReady = hadDataOnEntry || rememberContentReady()
 
-        if (isLoading) {
+        if (!contentReady || isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -201,12 +208,12 @@ fun ModuleRepoScreenMaterial(
                     LoadingIndicator()
                 }
             }
-        } else {
-            val displayModules = run {
-                val base = state.modules
-                val sortByName = state.sortByName
-                val collator = Collator.getInstance(LocalLocale.current.platformLocale)
-                if (!sortByName) base else base.sortedWith(compareBy(collator) { it.moduleName })
+        }
+        if (!isLoading && contentReady) {
+            val platformLocale = LocalLocale.current.platformLocale
+            val displayModules = remember(state.modules, state.sortByName) {
+                val collator = Collator.getInstance(platformLocale)
+                if (!state.sortByName) state.modules else state.modules.sortedWith(compareBy(collator) { it.moduleName })
             }
             RepoModuleList(
                 modules = displayModules,
@@ -244,11 +251,13 @@ private fun RepoModuleList(
             val latestReleaseTime = remember(module.latestReleaseTime) { module.latestReleaseTime }
             val moduleAuthor = stringResource(id = R.string.module_author)
 
-            TonalCard(modifier = Modifier.fillMaxWidth()) {
+            TonalCard(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { onModuleClick(module) }
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onModuleClick(module) }
                         .padding(22.dp, 18.dp, 22.dp, 12.dp)
                 ) {
                     if (module.moduleName.isNotEmpty()) {
@@ -472,6 +481,7 @@ private fun ReadmePage(
         ),
     ) {
         item {
+            val contentReady = rememberContentReady()
             var isLoading by remember { mutableStateOf(true) }
             if (isLoading) {
                 Box(
@@ -481,7 +491,7 @@ private fun ReadmePage(
                     LoadingIndicator()
                 }
             }
-            if (readmeLoaded && readmeHtml != null) {
+            if (contentReady && readmeLoaded && readmeHtml != null) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     GithubMarkdown(
                         content = readmeHtml,
@@ -599,6 +609,8 @@ fun ReleasesPage(
                                         remember(sizeText, asset.downloadCount) { "$sizeText · ${asset.downloadCount} downloads" }
                                     var isDownloading by remember(fileName, asset.downloadUrl) { mutableStateOf(false) }
                                     var progress by remember(fileName, asset.downloadUrl) { mutableIntStateOf(0) }
+                                    var downloadedUri by remember(fileName, asset.downloadUrl) { mutableStateOf<Uri?>(null) }
+                                    val isDownloaded = downloadedUri != null
                                     val onClickDownload = remember(fileName, asset.downloadUrl) {
                                         {
                                             val startText = context.getString(R.string.module_start_downloading, fileName)
@@ -608,7 +620,10 @@ fun ReleasesPage(
                                                     download(
                                                         asset.downloadUrl,
                                                         fileName,
-                                                        onDownloaded = onInstallModule,
+                                                        onDownloaded = { uri ->
+                                                            isDownloading = false
+                                                            downloadedUri = uri
+                                                        },
                                                         onDownloading = { isDownloading = true },
                                                         onProgress = { p -> scope.launch(Dispatchers.Main) { progress = p } }
                                                     )
@@ -635,19 +650,22 @@ fun ReleasesPage(
                                                 modifier = Modifier.padding(top = 2.dp)
                                             )
                                         }
-                                        FilledTonalButton(
-                                            onClick = onClickDownload,
-                                            contentPadding = ButtonDefaults.TextButtonContentPadding
-                                        ) {
-                                            if (isDownloading) {
-                                                CircularWavyProgressIndicator(
-                                                    progress = { progress / 100f },
-                                                    modifier = Modifier.size(20.dp),
-                                                )
-                                            } else {
+                                        if (isDownloaded) {
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    val uri = downloadedUri ?: return@FilledTonalButton
+                                                    val file = uri.path?.let { java.io.File(it) }
+                                                    if (file != null && file.exists()) {
+                                                        onInstallModule(uri)
+                                                    } else {
+                                                        downloadedUri = null
+                                                    }
+                                                },
+                                                contentPadding = ButtonDefaults.TextButtonContentPadding
+                                            ) {
                                                 Icon(
                                                     modifier = Modifier.size(20.dp),
-                                                    imageVector = Icons.Outlined.Download,
+                                                    imageVector = Icons.Outlined.InstallMobile,
                                                     contentDescription = stringResource(R.string.install)
                                                 )
                                                 Text(
@@ -655,6 +673,30 @@ fun ReleasesPage(
                                                     text = stringResource(R.string.install),
                                                     style = MaterialTheme.typography.labelMedium,
                                                 )
+                                            }
+                                        } else {
+                                            FilledTonalButton(
+                                                onClick = onClickDownload,
+                                                enabled = !isDownloading,
+                                                contentPadding = ButtonDefaults.TextButtonContentPadding
+                                            ) {
+                                                if (isDownloading) {
+                                                    CircularWavyProgressIndicator(
+                                                        progress = { progress / 100f },
+                                                        modifier = Modifier.size(20.dp),
+                                                    )
+                                                } else {
+                                                    Icon(
+                                                        modifier = Modifier.size(20.dp),
+                                                        imageVector = Icons.Outlined.Download,
+                                                        contentDescription = stringResource(R.string.download)
+                                                    )
+                                                    Text(
+                                                        modifier = Modifier.padding(start = 7.dp),
+                                                        text = stringResource(R.string.download),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                    )
+                                                }
                                             }
                                         }
                                     }

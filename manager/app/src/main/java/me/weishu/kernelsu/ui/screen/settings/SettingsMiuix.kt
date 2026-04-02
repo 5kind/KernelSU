@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.ContactPage
 import androidx.compose.material.icons.rounded.Dashboard
@@ -68,7 +69,7 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 fun SettingPagerMiuix(
     uiState: SettingsUiState,
     actions: SettingsScreenActions,
-    bottomInnerPadding: Dp
+    bottomInnerPadding: Dp,
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     val enableBlur = LocalEnableBlur.current
@@ -99,7 +100,7 @@ fun SettingPagerMiuix(
             )
         },
         popupHost = { },
-        contentWindowInsets = WindowInsets.systemBars.add(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal)
+        contentWindowInsets = WindowInsets.systemBars.add(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal),
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -263,6 +264,27 @@ fun SettingPagerMiuix(
                             onCheckedChange = actions.onSetKernelUmountEnabled
                         )
 
+                        val sulogSummary = when (uiState.sulogStatus) {
+                            "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                            "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                            else -> stringResource(id = R.string.settings_sulog_summary)
+                        }
+                        SuperSwitch(
+                            title = stringResource(id = R.string.settings_sulog),
+                            summary = sulogSummary,
+                            startAction = {
+                                Icon(
+                                    Icons.AutoMirrored.Rounded.Article,
+                                    modifier = Modifier.padding(end = 6.dp),
+                                    contentDescription = stringResource(id = R.string.settings_sulog),
+                                    tint = if (uiState.sulogStatus == "supported") colorScheme.onBackground else colorScheme.disabledOnSecondaryVariant
+                                )
+                            },
+                            enabled = uiState.sulogStatus == "supported",
+                            checked = uiState.isSulogEnabled,
+                            onCheckedChange = actions.onSetSulogEnabled
+                        )
+
                         SuperSwitch(
                             title = stringResource(id = R.string.settings_umount_modules_default),
                             summary = stringResource(id = R.string.settings_umount_modules_default_summary),
@@ -276,6 +298,21 @@ fun SettingPagerMiuix(
                             },
                             checked = uiState.isDefaultUmountModules,
                             onCheckedChange = actions.onSetDefaultUmountModules
+                        )
+
+                        SuperSwitch(
+                            title = stringResource(id = R.string.settings_adb_root),
+                            summary = stringResource(id = R.string.settings_adb_root_summary),
+                            startAction = {
+                                Icon(
+                                    Icons.Rounded.DeveloperMode,
+                                    modifier = Modifier.padding(end = 6.dp),
+                                    contentDescription = stringResource(id = R.string.settings_adb_root),
+                                    tint = colorScheme.onBackground
+                                )
+                            },
+                            checked = uiState.isAdbRootEnabled,
+                            onCheckedChange = actions.onSetAdbRootEnabled
                         )
 
                         SuperSwitch(
@@ -300,9 +337,10 @@ fun SettingPagerMiuix(
                                     Icons.Rounded.ElectricalServices,
                                     modifier = Modifier.padding(end = 6.dp),
                                     contentDescription = stringResource(id = R.string.settings_auto_jailbreak),
-                                    tint = colorScheme.onBackground
+                                    tint = if (uiState.isLateLoadMode) colorScheme.onBackground else colorScheme.disabledOnSecondaryVariant
                                 )
                             },
+                            enabled = uiState.isLateLoadMode,
                             checked = uiState.autoJailbreak,
                             onCheckedChange = actions.onSetAutoJailbreak
                         )
@@ -318,6 +356,7 @@ fun SettingPagerMiuix(
                         val uninstall = stringResource(id = R.string.settings_uninstall)
                         SuperArrow(
                             title = uninstall,
+                            enabled = !uiState.isLateLoadMode,
                             startAction = {
                                 Icon(
                                     Icons.Rounded.Delete,
@@ -326,7 +365,7 @@ fun SettingPagerMiuix(
                                     tint = colorScheme.onBackground,
                                 )
                             },
-                            onClick = { showUninstallDialog.value = true }
+                            onClick = { showUninstallDialog.value = true },
                         )
                         UninstallDialog(
                             show = showUninstallDialog.value,
@@ -368,7 +407,7 @@ fun SettingPagerMiuix(
                                 tint = colorScheme.onBackground
                             )
                         },
-                        onClick = actions.onOpenAbout
+                        onClick = actions.onOpenAbout,
                     )
                 }
                 Spacer(Modifier.height(bottomInnerPadding))

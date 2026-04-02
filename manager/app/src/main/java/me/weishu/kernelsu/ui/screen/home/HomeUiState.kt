@@ -16,7 +16,6 @@ data class HomeUiState(
     val isRootAvailable: Boolean,
     val isSafeMode: Boolean,
     val isLateLoadMode: Boolean,
-    val isSELinuxPermissive: Boolean,
     val checkUpdateEnabled: Boolean,
     val latestVersionInfo: LatestVersionInfo,
     val currentManagerVersionCode: Long,
@@ -24,6 +23,9 @@ data class HomeUiState(
     val moduleCount: Int,
     val systemInfo: SystemInfo,
 ) {
+    val isSELinuxPermissive: Boolean
+        get() = systemInfo.selinuxStatus == "Permissive"
+
     val isFullFeatured: Boolean
         get() = isManager && !requiresNewKernel && isRootAvailable
 
@@ -41,6 +43,9 @@ data class HomeUiState(
 
     val showKernelPrBuildWarning: Boolean
         get() = isManager && !isManagerPrBuild && isKernelPrBuild
+
+    val showVersionMismatchWarning: Boolean
+        get() = ksuVersion != null && ksuVersion.toLong() != currentManagerVersionCode
 
     val hasUpdate: Boolean
         get() = latestVersionInfo.versionCode > currentManagerVersionCode

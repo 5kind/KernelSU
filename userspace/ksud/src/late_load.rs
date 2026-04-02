@@ -34,7 +34,8 @@ fn dump_process_info(label: &str) {
     );
 }
 
-pub fn run() -> Result<()> {
+pub fn run(package_name: &String) -> Result<()> {
+    utils::daemonize(false)?;
     info!("late-load command triggered!");
     dump_process_info("late-load start");
 
@@ -59,13 +60,17 @@ pub fn run() -> Result<()> {
         dump_process_info("after load_module");
     }
 
+    // We need to reset stdin/stdout/stderr; otherwise, sending file descriptors via cmd transactions
+    // will be blocked by SELinux because its fsec->sid is still u:r:su:s0 instead of u:r:ksu:s0.
+    utils::reset_std()?;
+
     utils::umask(0);
 
     if let Err(e) = crate::module_config::clear_all_temp_configs() {
         warn!("clear temp configs failed: {e}");
     }
 
-    utils::install(None).context("Failed to install ksud")?;
+    utils::install(None, None).context("Failed to install ksud")?;
 
     // 5. Handle module updates
     if let Err(e) = handle_updated_modules() {
@@ -117,11 +122,16 @@ pub fn run() -> Result<()> {
     init_event::run_stage("boot-completed", false);
 
     // 14. Restart Manager so it gets a fresh ksu fd from the newly loaded kernel module
-    info!("Restarting KernelSU Manager...");
-    let pkg = "me.weishu.kernelsu";
-    let _ = Command::new("am").args(["force-stop", pkg]).status();
+    info!("Restarting KernelSU Manager {package_name}...");
     let _ = Command::new("am")
-        .args(["start", "-n", &format!("{pkg}/.ui.MainActivity")])
+        .args(["force-stop", package_name])
+        .status();
+    let _ = Command::new("am")
+        .args([
+            "start",
+            "-n",
+            &format!("{package_name}/me.weishu.kernelsu.ui.MainActivity"),
+        ])
         .status();
 
     Ok(())

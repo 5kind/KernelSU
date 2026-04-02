@@ -2,12 +2,12 @@ package me.weishu.kernelsu.ui.screen.modulerepo
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,9 +24,9 @@ import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 fun ModuleRepoScreen() {
     val navigator = LocalNavigator.current
     val viewModel = viewModel<ModuleRepoViewModel>()
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val installedVm = viewModel<ModuleViewModel>()
-    val installedUiState by installedVm.uiState.collectAsState()
+    val installedUiState by installedVm.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         if (uiState.modules.isEmpty()) {

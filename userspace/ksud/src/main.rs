@@ -39,13 +39,23 @@ mod module_config;
 #[cfg(target_os = "android")]
 mod profile;
 #[cfg(target_os = "android")]
+mod resetprop;
+#[cfg(target_os = "android")]
 mod restorecon;
 #[cfg(target_os = "android")]
 mod sepolicy;
 #[cfg(target_os = "android")]
 mod su;
 #[cfg(target_os = "android")]
+mod sulog;
+#[cfg(target_os = "android")]
+mod unload;
+#[cfg(target_os = "android")]
 mod utils;
+
+#[cfg(target_os = "android")]
+#[allow(nonstandard_style, unused, unsafe_op_in_unsafe_fn)]
+mod ksu_uapi;
 
 fn main() -> anyhow::Result<()> {
     #[cfg(target_os = "android")]
